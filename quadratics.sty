@@ -1,0 +1,319 @@
+\NeedsTeXFormat{LaTeX2e}
+\RequirePackage{expl3}
+\RequirePackage{xparse}
+
+\ProvidesExplPackage {quadratics} {2016/11/21} {1.0} {Macros for laying out quadratic problems}
+
+\fp_new:N \l__quad_tmp_int
+\tl_new:N \l__quad_tmp_tl
+
+\cs_new_nopar:Npn \fp_to_rat:n #1
+{
+  \fp_compare:nTF {trunc(#1) == #1} {
+    \fp_eval:n {#1}
+  } {
+    \fp_compare:nTF {trunc(2*(#1)) == 2*#1} {
+      \frac{\fp_eval:n{2*(#1)}}{2}
+    } {
+      \frac{\fp_eval:n{4*(#1)}}{4}
+    }
+  }
+}
+
+\cs_new_nopar:Npn \fp_use_signed:n #1
+{
+  \fp_compare:nF {#1 == 0}
+  {
+    \fp_compare:nTF {#1 > 0}
+    {
+      + \fp_to_rat:n {#1}
+    }
+    {
+      - \fp_to_rat:n {-1*(#1)}
+    }
+  }
+}
+
+\cs_new_nopar:Npn \fp_use_signed_coefficient:nn #1 #2
+{
+  \fp_compare:nF {#1 == 0}
+  {
+    \fp_compare:nTF {#1 > 0}
+    {
+      +
+      \fp_compare:nF {#1 == 1}
+      {
+        \fp_eval:n {#1}
+      }
+    }
+    {
+      \fp_compare:nTF {#1 == -1}
+      {
+        -
+      }
+      {
+        \fp_eval:n {#1}
+      }
+    }
+    #2
+  }
+}
+
+\cs_new_nopar:Npn \fp_use_coefficient:nn #1 #2
+{
+  \fp_compare:nF {#1 == 0}
+  {
+    \fp_compare:nTF {#1 == -1}
+    {-}
+    {
+      \fp_compare:nF {#1 == 1}
+      {
+        \fp_eval:n {#1}
+      }
+    }
+    #2
+  }
+}
+
+
+\DeclareDocumentCommand \QuadExp { O{x} m m m }
+{
+  \tl_set:Nx \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#2} {#1^2}
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed_coefficient:nn { - #3*#2 - #4*#2} {#1} }
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed:n {#2 * #3 * #4}}
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadFact {s O{x} m m m}
+{
+  \tl_set:Nn \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#3} {} \left( #2
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed:n { - #4}}
+  \tl_put_right:Nn \l__quad_tmp_tl {\right)}
+  \IfBooleanTF {#1}
+  {
+    \fp_compare:nTF {#4 == #5}
+    {
+      \tl_put_right:Nn \l__quad_tmp_tl {^2}
+    }
+    {
+      \tl_put_right:Nn \l__quad_tmp_tl {\left( #2}
+      \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed:n { - #5}}
+      \tl_put_right:Nn \l__quad_tmp_tl {\right)}
+    }
+  }
+  {
+  \tl_put_right:Nn \l__quad_tmp_tl {\left( #2}
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed:n { - #5}}
+  \tl_put_right:Nn \l__quad_tmp_tl {\right)}
+  }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadEval { m m m m }
+{
+  \fp_set:Nn \l__quad_tmp_int { #1*(#4 - #2) * (#4 - #3)}
+  \mode_if_math:TF
+  {
+    \fp_use:N \l__quad_tmp_int
+  }
+  {
+    \(\fp_use:N \l__quad_tmp_int\)
+  }
+}
+
+\NewDocumentCommand \QuadTable { m m m m m }
+{
+  \tl_set:Nn \l__quad_tmp_tl {l|}
+  \prg_replicate:nn {#5 - #4 + 1}
+  {
+    \tl_put_right:Nn \l__quad_tmp_tl {r}
+  }
+  \exp_args:NnV \begin{tabular} \l__quad_tmp_tl
+  \(x\) 
+  \fp_step_inline:nnnn {#4} {1} {#5} {
+    & \(##1\) 
+  }
+  \\ \midrule
+  \(y\)
+  \fp_step_inline:nnnn {#5} {1} {#4} {
+    & \(\QuadEval{#1}{#2}{#3}{##1}\)
+  }
+  \end{tabular}
+}
+
+\NewDocumentCommand \QuadSoln { O{x} m m m }
+{
+  \(#1 = #3\) ~and~ \(#1 = #4\)
+}
+
+\NewDocumentCommand \QuadMod { O{x} m m m m m }
+{
+  \tl_set:Nn \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#2} {#1^2}
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed_coefficient:nn { - #3*#2 - #4*#3 - #5} {#1} }
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed:n {#2 * #3 * #4 - #6}}
+  \tl_put_right:Nn \l__quad_tmp_tl { = }
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed_coefficient:nn { #5} {#1} }
+  \fp_compare:nTF {#5 == 0} {
+    \tl_put_right:Nx \l__quad_tmp_tl {\fp_eval:n { #6}}
+  }
+  {
+    \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed:n { #6}}
+  }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadEqConst { O{x} m m m }
+{
+  \tl_set:Nn \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#2} {#1^2}
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed_coefficient:nn { - #2*#3 - #2*#4 } {#1} }
+  \tl_put_right:Nn \l__quad_tmp_tl { = }  
+  \tl_put_right:Nx \l__quad_tmp_tl {\fp_eval:n {- #2 * #3 * #4} }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadEqLinear { O{x} m m m }
+{
+  \tl_set:Nn \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#2} {#1^2} =
+  }
+  \fp_compare:nTF { #2*#3 + #2*#4 == 0 }
+  {
+    \tl_put_right:Nx \l__quad_tmp_tl {\fp_eval:n {- #2 * #3 * #4} }
+  }
+  {
+    \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_coefficient:nn { #2*#3 + #2*#4 } {#1} }
+    \tl_put_right:Nx \l__quad_tmp_tl {\fp_use_signed:n {- #2 * #3 * #4} }
+  }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadSqExp { O{x} m m m }
+{
+  \tl_set:Nx \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#2} {#1^2}
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {
+    \fp_use_signed_coefficient:nn {#2 * 2 * #3} {#1}
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {
+    \fp_use_signed:n {#2 * #3 * #3 + #4}
+  }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadSqSplit { O{x} m m m }
+{
+  \tl_set:Nx \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#2} {#1^2}
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {
+    \fp_use_signed_coefficient:nn {#2 * 2 * #3} {#1}
+  }
+  \tl_put_right:Nx \l__quad_tmp_tl {
+    \fp_use_signed:n {#2 * #3 * #3}
+    \fp_use_signed:n {#4}
+  }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadSqCplt { O{x} m m m }
+{
+  \tl_set:Nx \l__quad_tmp_tl {
+    \fp_use_coefficient:nn {#2} {} \left( #1 \fp_use_signed:n {#3} \right)^2 \fp_use_signed:n {#4}
+  }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \QuadSqSoln {O{x} m m m }
+{
+  \tl_set:Nx \l__quad_tmp_tl {
+    #1 = 
+    \fp_compare:nTF { floor(2*sqrt(-1*(#4/#2))) == 2*sqrt(-1*(#4/#2)) }
+    {
+      \fp_to_rat:n {-1*(#3) + sqrt(-1*(#4/#2))},
+      \fp_to_rat:n {-1*(#3) - sqrt(-1*(#4/#2))}
+    }
+    {
+      \fp_compare:nF {#3 == 0}
+      {
+        \fp_compare:nTF {#3 > 0}
+        {
+          -\fp_to_rat:n {#3}
+        }
+        {
+          \fp_to_rat:n {-1*(#3)}
+        }
+      }
+      \exp_not:N \pm \exp_not:N \sqrt{ \fp_to_rat:n {-1*(#4/#2)} }
+    }
+  }
+  \mode_if_math:TF
+  {
+    \tl_use:N \l__quad_tmp_tl
+  }
+  {
+    \(\tl_use:N \l__quad_tmp_tl\)
+  }
+}
+
+\NewDocumentCommand \FPeval { m }
+{
+  \fp_to_rat:n {#1}
+}
+
